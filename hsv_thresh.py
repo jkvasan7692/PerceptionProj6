@@ -8,23 +8,29 @@ Created on Wed May 15 14:31:19 2019
 import os,sys
 import numpy as np
 import math
+
+try:
+    sys.path.remove('/opt/ros/kinetic/lib/python2.7/dist-packages')
+except:
+    pass
+
 import cv2 as cv
 
 
-images_dir = "./input/"
-testing_dir = "./Testing/"
-training_dir = "./Training/"
+images_dir = "../input/"
+testing_dir = "../Testing/"
+training_dir = "../Training/"
 DEBUG = True
 
 def print_debug(*objects):
     if DEBUG:
         print(*objects)
 
-def show(image,window_name):
-    print('Displaying '+str(window_name))
-    cv.imshow('Image', image)
-    cv.waitKey(0)
-    cv.destroyAllWindows()
+def show(image,window_name,wait):
+    print_debug('Displaying '+str(window_name))
+    cv.imshow(window_name, image)
+    cv.waitKey(wait)
+    #cv.destroyAllWindows()
 
 def white_balance_loops(img):
     result = cv.cvtColor(img, cv.COLOR_BGR2LAB)
@@ -41,13 +47,22 @@ def white_balance_loops(img):
     return result
 
 
+def hsv_thresh(image):
+	hsv_image = cv.cvtColor(image,cv.COLOR_BGR2HSV)
+	sat_channel = hsv_image[:,:,1]
+	ret,thresholded_image = cv.threshold(sat_channel,120,255,cv.THRESH_BINARY)
+	show(thresholded_image,"thresh",0)
+
+
 
 files_list = os.listdir(images_dir)
 files_list.sort()
 for file_name in files_list:
     if ".jpg" in file_name:
         image = cv.imread(images_dir+file_name)
-        final = np.hstack((image, white_balance_loops(image)))
-        show(final)
+        #final = np.hstack((image, white_balance_loops(image)))
+        thresh_image = hsv_thresh(image)
+
+        show(image,"image",0)
 
 
