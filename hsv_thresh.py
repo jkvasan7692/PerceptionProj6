@@ -12,9 +12,9 @@ except:
 import cv2 as cv
 
 
-images_dir = "./input/"
-testing_dir = "./Testing/"
-training_dir = "./Training/"
+images_dir = "../input/"
+testing_dir = "../Testing/"
+training_dir = "../Training/"
 DEBUG = True
 
 def print_debug(*objects):
@@ -49,14 +49,31 @@ def read_training_images():
     for dirname,dirnames,filenames in os.walk(training_directory):
         for dir_name in dirnames:
             label_dir_str = dir_name[-5:]
-            if int(label_dir_str) in labels_list:
-                for filename in os.listdir(training_directory+dir_name):
-                    if ".ppm" in filename:
-                        image_path = training_directory+dir_name+'/'+filename
-                        image = cv.imread(image_path,0)
-                        label_image_tup = (image,int(label_dir_str))
-                        training_data.append(label_image_tup)
+            #if int(label_dir_str) in labels_list:
+            for filename in os.listdir(training_directory+dir_name):
+                if ".ppm" in filename:
+                    image_path = training_directory+dir_name+'/'+filename
+                    image = cv.imread(image_path,0)
+                    label_image_tup = (image,int(label_dir_str))
+                    training_data.append(label_image_tup)
     return training_data
+
+
+def read_test_images():
+    labels_list = [45,21,38,35,17,1,14]
+    training_directory = '../Testing/'
+    test_data = []
+    for dirname,dirnames,filenames in os.walk(training_directory):
+        for dir_name in dirnames:
+            label_dir_str = dir_name[-5:]
+            #if int(label_dir_str) in labels_list:
+            for filename in os.listdir(training_directory+dir_name):
+                if ".ppm" in filename:
+                    image_path = training_directory+dir_name+'/'+filename
+                    image = cv.imread(image_path,0)
+                    label_image_tup = (image,int(label_dir_str))
+                    test_data.append(label_image_tup)
+    return test_data
 
 
 def get_hog_features_labels(training_data):
@@ -78,7 +95,7 @@ def get_hog_features_labels(training_data):
         label = data[1]
         resized_image = cv.resize(image,(64,64))
         hog_features = hog.compute(resized_image)
-        print_debug(hog_features.shape)
+        #print_debug(hog_features.shape)
         hog_features_list.append(hog_features)
         labels_list.append(label)
     hog_array = np.array(hog_features_list)
@@ -90,8 +107,21 @@ def train_svm(hog_features,labels):
     hog_features = hog_features.reshape((hog_features.shape[0],hog_features.shape[1]))
     clf = svm.SVC(gamma='scale', decision_function_shape='ovo')
     clf.fit(hog_features,label_array)
-    print_debug(clf)
+ 
     return clf
+
+def test_svm(svm,hog_features,labels,test_images):
+    label_array = np.array(labels)
+    hog_features = hog_features.reshape((hog_features.shape[0],hog_features.shape[1]))
+    decision=svm.predict(hog_features)
+    classifications = np.array_equal(label_array,decision)
+    accuracy=0
+    for i in range(0,decision.shape[0]):
+        if decision[i]==labels[i]:
+            accuracy=accuracy+1
+    print_debug(float(accuracy)/decision.shape[0])
+
+
 
 
 # for file_name in files_list:
@@ -145,34 +175,37 @@ def drawBoundingBoxForSign(img , contours, mask):
 files_list = os.listdir(images_dir)
 files_list.sort()
 train_data = read_training_images()
-hog_features,labels = get_hog_features_labels(train_data)
-svm_trained = train_svm(hog_features,labels)
+train_hog_features,labels = get_hog_features_labels(train_data)
+svm_trained = train_svm(train_hog_features,labels)
+test_data = read_test_images()
+test_hog_features,test_labels = get_hog_features_labels(test_data)
+test_svm(svm_trained,test_hog_features,test_labels,test_data)
 
-for file_name in files_list:
-    if ".jpg" in file_name:
-        image = cv.imread(images_dir+file_name)
+# for file_name in files_list:
+#     if ".jpg" in file_name:
+#         image = cv.imread(images_dir+file_name)
         
-        detector_params = cv.SimpleBlobDetector_Params()
-        detector = cv.SimpleBlobDetector(detector_params)
+#         detector_params = cv.SimpleBlobDetector_Params()
+#         detector = cv.SimpleBlobDetector(detector_params)
         
-        detector_params.filterByArea = True
-        detector_params.minArea = 100
-       thresh_image = hsv_thresh(image)
+#         detector_params.filterByArea = True
+#         detector_params.minArea = 100
+#         thresh_image = hsv_thresh(image)
         
       
-        contours, hierarchy = cv.findContours(thresh_image , cv.RETR_TREE , cv.CHAIN_APPROX_SIMPLE)
+#         contours, hierarchy = cv.findContours(thresh_image , cv.RETR_TREE , cv.CHAIN_APPROX_SIMPLE)
         
-        boundedRoi, imgWithContours = findListOfImages(image , contours , hierarchy)
+#         boundedRoi, imgWithContours = findListOfImages(image , contours , hierarchy)
         
-        mask = np.ones(len(boundedRoi))
+#         mask = np.ones(len(boundedRoi))
         
-#%% Call to the HOG and SVM function
+# #%% Call to the HOG and SVM function
         
-#%% Draw the mask filtered contours
-#        drawBoundingBoxForSign(image , contours, mask)
+# #%% Draw the mask filtered contours
+# #        drawBoundingBoxForSign(image , contours, mask)
 
     
 
-        show(imageKeyp,"image",10)
+#         show(imageKeyp,"image",10)
 
 
