@@ -1,13 +1,7 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Wed May 15 14:31:19 2019
-
-@author: Gautam Balachandran
-"""
-
 import os,sys
 import numpy as np
 import math
+import random as rng
 
 try:
     sys.path.remove('/opt/ros/kinetic/lib/python2.7/dist-packages')
@@ -17,9 +11,9 @@ except:
 import cv2 as cv
 
 
-images_dir = "../input/"
-testing_dir = "../Testing/"
-training_dir = "../Training/"
+images_dir = "./input/"
+testing_dir = "./Testing/"
+training_dir = "./Training/"
 DEBUG = True
 
 def print_debug(*objects):
@@ -48,21 +42,74 @@ def white_balance_loops(img):
 
 
 def hsv_thresh(image):
-	hsv_image = cv.cvtColor(image,cv.COLOR_BGR2HSV)
-	sat_channel = hsv_image[:,:,1]
-	ret,thresholded_image = cv.threshold(sat_channel,120,255,cv.THRESH_BINARY)
-	show(thresholded_image,"thresh",0)
+    hsv_image = cv.cvtColor(image,cv.COLOR_BGR2HSV)
+    sat_channel = hsv_image[:,:,1]
+    ret,thresholded_image = cv.threshold(sat_channel,110,255,cv.THRESH_BINARY)
+    show(thresholded_image,"thresh",10)
 
+    return thresholded_image
+    
+def findListOfImages(inpImg , contours, hierarchy):
+    boundedRectImages = list()        
+        
+    contours_poly = [None]*len(contours)
+    boundRect = [None]*len(contours)
+    for i, c in enumerate(contours):
+        contours_poly[i] = cv.approxPolyDP(c, 3, True)
+        boundRect[i] = cv.boundingRect(contours_poly[i])
+        if boundRect[i][2]*boundRect[i][3] >3000 and  boundRect[i][2]*boundRect[i][3] < 10000:
+            xStart = boundRect[i][0]
+            yStart = boundRect[i][1]
+            xEnd = boundRect[i][0]+boundRect[i][2]
+            yEnd = boundRect[i][1]+boundRect[i][3]
+            
+            roi = inpImg[yStart:yEnd , xStart:xEnd]
+#            show(roi , "roi", 0)
+            boundedRectImages.append(roi)
+            
+#            cv.rectangle(inpImg, (int(boundRect[i][0]), int(boundRect[i][1])),(int(boundRect[i][0]+boundRect[i][2]), int(boundRect[i][1]+boundRect[i][3])), (0,255,0), 2)
+            
+    return boundedRectImages, inpImg
+    
+def drawBoundingBoxForSign(img , contours, mask):
 
+    contours_poly = [None]*len(contours)
+    boundRect = [None]*len(contours)
+    
+    for i, c in enumerate(contours):
+        if(mask[i] == 1):
+            
+            contours_poly[i] = cv.approxPolyDP(c, 3, True)
+            boundRect[i] = cv.boundingRect(contours_poly[i])
+            cv.rectangle(img, (int(boundRect[i][0]), int(boundRect[i][1])),(int(boundRect[i][0]+boundRect[i][2]), int(boundRect[i][1]+boundRect[i][3])), (0,255,0), 2)
 
 files_list = os.listdir(images_dir)
 files_list.sort()
 for file_name in files_list:
     if ".jpg" in file_name:
         image = cv.imread(images_dir+file_name)
-        #final = np.hstack((image, white_balance_loops(image)))
-        thresh_image = hsv_thresh(image)
+        
+        detector_params = cv.SimpleBlobDetector_Params()
+        detector = cv.SimpleBlobDetector(detector_params)
+        
+        detector_params.filterByArea = True
+        detector_params.minArea = 100
+       thresh_image = hsv_thresh(image)
+        
+      
+        contours, hierarchy = cv.findContours(thresh_image , cv.RETR_TREE , cv.CHAIN_APPROX_SIMPLE)
+        
+        boundedRoi, imgWithContours = findListOfImages(image , contours , hierarchy)
+        
+        mask = np.ones(len(boundedRoi))
+        
+#%% Call to the HOG and SVM function
+        
+#%% Draw the mask filtered contours
+#        drawBoundingBoxForSign(image , contours, mask)
 
-        show(image,"image",0)
+    
+
+        show(imageKeyp,"image",10)
 
 
